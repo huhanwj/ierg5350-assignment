@@ -86,21 +86,30 @@ class BaseTrainer:
 
         if self.discrete:  # Please use categorical distribution.
             logits, values = self.model(obs)
-            pass
-
+            dist = torch.distributions.Categorical(logits = logits)
+            
+            if deterministic is True:
+                actions = dist.probs.argmax()
+            else:
+                actions = dist.sample()
+            action_log_probs = dist.log_prob(actions.view(-1)).view(-1,1)
             actions = actions.view(-1, 1)  # In discrete case only return the chosen action.
 
         else:  # Please use normal distribution. You should
             means, log_std, values = self.model(obs)
-            pass
+            std = torch.exp(log_std)
+            dist = torch.distributions.Normal(means, std)
+            if deterministic is True:
+                actions = means
+            else:
+                actions = dist.sample()
+            action_log_probs =  dist.log_prob(actions).sum(axis=1)
 
             actions = actions.view(-1, self.num_actions)
 
         values = values.view(-1, 1)
         action_log_probs = action_log_probs.view(-1, 1)
-
         return values, actions, action_log_probs
-
     def evaluate_actions(self, obs, act):
         """Run models to get the values, log probability and action
         distribution entropy of the action in current state"""

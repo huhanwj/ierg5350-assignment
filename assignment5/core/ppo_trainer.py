@@ -88,11 +88,15 @@ class PPOTrainer(BaseTrainer):
 
         # [TODO] Implement policy loss
         policy_loss = None
-        pass
+        ratio = torch.exp(action_log_probs - old_action_log_probs_batch)
+        surr1 = ratio * adv_targ
+        surr2 = torch.clamp(ratio, 1.0 - self.clip_param, 1.0 + self.clip_param)* adv_targ
+        policy_loss = - torch.min(surr1, surr2).mean()
+        #pass
 
         # [TODO] Implement value loss
-        value_loss = None
-        pass
+        value_loss = F.mse_loss(return_batch, values)
+
 
         # This is the total loss
         loss = policy_loss + self.config.value_loss_weight * value_loss - self.config.entropy_loss_weight * dist_entropy
