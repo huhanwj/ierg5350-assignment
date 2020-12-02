@@ -79,7 +79,7 @@ class PPOTrainer(BaseTrainer):
 
         values, action_log_probs, dist_entropy = self.evaluate_actions(
             observations_batch, actions_batch)
-
+        #print(action_log_probs)
         assert values.shape == (self.mini_batch_size, 1)
         assert action_log_probs.shape == (self.mini_batch_size, 1)
         assert values.requires_grad
@@ -87,7 +87,7 @@ class PPOTrainer(BaseTrainer):
         assert dist_entropy.requires_grad
 
         # [TODO] Implement policy loss
-        policy_loss = None
+        # policy_loss = None
         ratio = torch.exp(action_log_probs - old_action_log_probs_batch)
         surr1 = ratio * adv_targ
         surr2 = torch.clamp(ratio, 1.0 - self.clip_param, 1.0 + self.clip_param)* adv_targ

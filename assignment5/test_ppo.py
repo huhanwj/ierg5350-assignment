@@ -54,7 +54,7 @@ def test_multiple_env_car_racing():
 
 
 if __name__ == '__main__':
-    # test_single_env_car_racing()
-    # test_multiple_env_car_racing()
+    #test_single_env_car_racing()
+    #test_multiple_env_car_racing()
     # test_single_env_pong()
-    test_multiple_env_pong()
+    #test_multiple_env_pong()
