@@ -1,8 +1,6 @@
 """
 This file implement PPO algorithm.
-
 You need to implement `compute_loss` function.
-
 -----
 *2020-2021 Term 1, IERG 5350: Reinforcement Learning. Department of Information Engineering, The Chinese University of
 Hong Kong. Course Instructor: Professor ZHOU Bolei. Assignment author: PENG Zhenghao, SUN Hao, ZHAN Xiaohang.*
@@ -36,9 +34,11 @@ class PPOConfig:
         # Learning
         self.gamma = 0.99
         self.lr = 5e-4
-        self.grad_norm_max = 10.0
+        #self.grad_norm_max = 10
+        self.grad_norm_max = 10
         self.entropy_loss_weight = 0.01
         self.ppo_epoch = 10
+        #self.mini_batch_size = 500
         self.mini_batch_size = 500
         self.ppo_clip_param = 0.1
         self.USE_GAE = True
@@ -79,7 +79,7 @@ class PPOTrainer(BaseTrainer):
 
         values, action_log_probs, dist_entropy = self.evaluate_actions(
             observations_batch, actions_batch)
-        #print(action_log_probs)
+
         assert values.shape == (self.mini_batch_size, 1)
         assert action_log_probs.shape == (self.mini_batch_size, 1)
         assert values.requires_grad
@@ -87,16 +87,15 @@ class PPOTrainer(BaseTrainer):
         assert dist_entropy.requires_grad
 
         # [TODO] Implement policy loss
-        # policy_loss = None
-        ratio = torch.exp(action_log_probs - old_action_log_probs_batch)
+        ratio = torch.exp(action_log_probs - old_action_log_probs_batch.detach())
         surr1 = ratio * adv_targ
-        surr2 = torch.clamp(ratio, 1.0 - self.clip_param, 1.0 + self.clip_param)* adv_targ
-        policy_loss = - torch.min(surr1, surr2).mean()
-        #pass
+        surr2 = torch.clamp(ratio, 1 - self.clip_param, 1 + self.clip_param) * adv_targ
+        policy_loss = - torch.mean(torch.min(surr1, surr2))
+        # pass
 
         # [TODO] Implement value loss
-        value_loss = F.mse_loss(return_batch, values)
-
+        value_loss = torch.mean((values - return_batch).pow(2))
+        # pass
 
         # This is the total loss
         loss = policy_loss + self.config.value_loss_weight * value_loss - self.config.entropy_loss_weight * dist_entropy

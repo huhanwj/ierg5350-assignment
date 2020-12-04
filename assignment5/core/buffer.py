@@ -1,8 +1,6 @@
 """
 This file defines A2C and PPO rollout buffer.
-
 You need to implement the compute_returns function.
-
 -----
 *2020-2021 Term 1, IERG 5350: Reinforcement Learning. Department of Information Engineering, The Chinese University of
 Hong Kong. Course Instructor: Professor ZHOU Bolei. Assignment author: PENG Zhenghao, SUN Hao, ZHAN Xiaohang.*
@@ -64,10 +62,11 @@ class PPORolloutStorage:
                 #   of timestep t+1 to get the advantage of timestep t.
                 #  3. The variable `gae` represents the advantage
                 #  4. The for-loop is in a reverse order.
-                delta = self.rewards[step] + gamma * self.returns[step + 1] * self.masks[step + 1] - self.value_preds[step]
-                gae = delta + gamma * self.gae_lambda * self.masks[step + 1]*gae
-                self.returns[step] = gae + self.value_preds[step]
 
+                # self.returns[step] = self.rewards[step] * gamma * self.returns[step + 1] * self.masks[step]
+                delta = self.rewards[step] + gamma * self.value_preds[step + 1] * self.masks[step] - self.value_preds[step]
+                gae = delta + gamma * self.gae_lambda * gae * self.masks[step]
+                self.returns[step] = gae + self.value_preds[step]
         else:
             # Ignore this part
             raise NotImplementedError("Not for this assignment.")

@@ -1,8 +1,6 @@
 """
 This file implement a base trainer class.
-
 You should finish `compute_action` and run this file to verify the base trainer is implement correctly.
-
 -----
 *2020-2021 Term 1, IERG 5350: Reinforcement Learning. Department of Information Engineering, The Chinese University of
 Hong Kong. Course Instructor: Professor ZHOU Bolei. Assignment author: PENG Zhenghao, SUN Hao, ZHAN Xiaohang.*
@@ -86,36 +84,27 @@ class BaseTrainer:
 
         if self.discrete:  # Please use categorical distribution.
             logits, values = self.model(obs)
-            dist = torch.distributions.Categorical(logits = logits)
-            
-            if deterministic is True:
-                actions = dist.probs.argmax()
-            else:
-                actions = dist.sample()
-            action_log_probs = dist.log_prob(actions.view(-1)).view(-1,1)
+            # pass
+            dist = torch.distributions.Categorical(logits=logits)
+            actions = dist.sample()
+            action_log_probs = dist.log_prob(actions)
+             
             actions = actions.view(-1, 1)  # In discrete case only return the chosen action.
 
-        # else:  # Please use normal distribution. You should
-        #     means, log_std, values = self.model(obs)
-        #     std = torch.exp(log_std)
-        #     dist = torch.distributions.Normal(means, std)
-        #     if deterministic is True:
-        #         actions = means
-        #     else:
-        #         actions = dist.sample()
-        #     action_log_probs =  dist.log_prob(actions).sum(axis=1)
-
-        #     actions = actions.view(-1, self.num_actions)
-        else:
-            means, log_std, values, (alpha, beta) = self.model(obs)
-            dist = torch.distributions.Beta(alpha, beta)
+        else:  # Please use normal distribution. You should
+            means, log_std, values = self.model(obs)
+            dist = torch.distributions.Normal(means, torch.exp(log_std))
             actions = dist.sample()
-            action_log_probs =  dist.log_prob(actions).sum(axis=1)
+            action_log_probs = dist.log_prob(actions).sum(axis=1)
+
             actions = actions.view(-1, self.num_actions)
+
 
         values = values.view(-1, 1)
         action_log_probs = action_log_probs.view(-1, 1)
+
         return values, actions, action_log_probs
+
     def evaluate_actions(self, obs, act):
         """Run models to get the values, log probability and action
         distribution entropy of the action in current state"""
@@ -128,24 +117,19 @@ class BaseTrainer:
             dist = Categorical(logits=logits)
             action_log_probs = dist.log_prob(act.view(-1)).view(-1, 1)
             dist_entropy = dist.entropy().mean()
-        # else:
-        #     means, log_std, values = self.model(obs)
-        #     pass
-        #     action_std = torch.exp(log_std)
-        #     dist = torch.distributions.Normal(means, action_std)
-        #     action_log_probs = dist.log_prob(act).sum(axis=1).view(-1, 1)
-        #     dist_entropy = dist.entropy().mean()
         else:
-            means, log_std, values, (alpha, beta) = self.model(obs)
+            means, log_std, values = self.model(obs)
             pass
-            dist = torch.distributions.Beta(alpha, beta)
-            action_log_probs = dist.log_prob(act).sum(axis=1).view(-1,1)
+            action_std = torch.exp(log_std)
+            dist = torch.distributions.Normal(means, action_std)
+            action_log_probs = dist.log_prob(act).sum(axis=1).view(-1, 1)
             dist_entropy = dist.entropy().mean()
 
         assert dist_entropy.shape == ()
 
         values = values.view(-1, 1)
         action_log_probs = action_log_probs.view(-1, 1)
+
         return values, action_log_probs, dist_entropy
 
     def compute_values(self, obs):
@@ -155,7 +139,7 @@ class BaseTrainer:
         if self.discrete:
             _, values = self.model(obs)
         else:
-            _, _, values, (_, _) = self.model(obs)
+            _, _, values = self.model(obs)
         return values
 
     def save_w(self, log_dir="", suffix=""):
@@ -197,9 +181,6 @@ class ActorCritic(nn.Module):
             self.actor_logstd = None
         else:
             self.actor_logstd = nn.Parameter(torch.zeros(1, num_actions))
-            self.alpha_head = nn.Sequential(nn.Linear(100, 2), nn.Tanh())
-            self.beta_head = nn.Sequential(nn.Linear(100, 2), nn.Tanh())
-            
 
         # The network structure is designed for 42X42 observation.
         if input_shape[1:] == (42, 42):
@@ -241,14 +222,11 @@ class ActorCritic(nn.Module):
             x = x.view(x.size(0), -1)
         value = self.critic_linear(x)
         logits = self.actor_linear(x)
-        if not self.discrete:
-            alpha = self.alpha_head(x) + 1
-            beta = self.beta_head(x) + 1
 
         if self.discrete:
             return logits, value
         else:
-            return logits, self.actor_logstd, value, (alpha, beta)
+            return logits, self.actor_logstd, value
 
     def feature_size(self, input_shape):
         if hasattr(self, "hidden"):
@@ -290,7 +268,7 @@ def test_base_trainer():
 
     class FakeTrainer(BaseTrainer):
         def setup_optimizer(self):
-            pass
+            self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr)
 
         def setup_rollouts(self):
             pass
